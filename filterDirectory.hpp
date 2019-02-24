@@ -16,9 +16,13 @@ struct EXPIMP_FILTERDIRECTORYQTSO filterOptions_s
 {
     //else use relative (relative to the root directory that's being filtered)
     bool useAbsolutePaths_pub = false;
-    //generic filename filter, Qt entryList(nameFilters...
+    //filename wildcard (? and *) filter, Qt entryList(nameFilters...
     //this filter applies "or" wise, if a file matches any it will show in the results
-    QStringList filenameFilters_pub;
+    QStringList filenameWildcardFilters_pub;
+
+    //regex patterns files must match
+    //this filter applies "or" wise, if a file matches any it will show in the results
+    QStringList filenameRegexFilters_pub;
     //extensions, the whole extension has to match, see Qt QFileInfo::completeSuffix
     //this filter applies "or" wise, if a file matches any it will show in the results
     QStringList filenameFullExtensions_pub;
@@ -30,13 +34,13 @@ struct EXPIMP_FILTERDIRECTORYQTSO filterOptions_s
     QString onlyIncludeDirectoriesWithFileX_pub;
 
     bool listEmptyDirectories_pub = true;
-    //it's no the same as navigate directories, this one just removes directory name entries
-    //from the results, but directories are navigated
+    //it's no the same as navigate directories, this adds directory entries
+    //to the results, but directories are navigated depending navigateSubdirectories_pub
     bool listDirectories_pub = false;
     bool listFiles_pub = true;
     bool listHidden_pub = true;
 
-    //TODO datetimes, filesizes, contains
+    //TODO datetimes, filesizes
 };
 
 //can be reused, not thread-safe
@@ -62,8 +66,11 @@ private:
 
     bool isValidDirectoryPath_f();
     bool isValidFilterOptions_f();
+
+    bool filenameRegexMatch_f(const QString& filename_par_con) const;
+    bool filenameFullExtensionMatch_f(const QString& filename_par_con) const;
 public:
-    directoryFilter_c() = default;
+    directoryFilter_c() = delete;
     directoryFilter_c(
             const QString directoryPath_par_con
             , const filterOptions_s filterOptions_par_con = filterOptions_s()
