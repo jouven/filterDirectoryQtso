@@ -44,7 +44,7 @@ struct EXPIMP_FILTERDIRECTORYQTSO filterOptions_s
 };
 
 //can be reused, not thread-safe
-class EXPIMP_FILTERDIRECTORYQTSO directoryFilter_c : public QObject, public eines::baseClassQt_c
+class EXPIMP_FILTERDIRECTORYQTSO directoryFilter_c : public QObject, public baseClassQt_c
 {
     Q_OBJECT
 public:
