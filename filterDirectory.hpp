@@ -72,8 +72,8 @@ private:
 public:
     directoryFilter_c() = delete;
     directoryFilter_c(
-            const QString directoryPath_par_con
-            , const filterOptions_s filterOptions_par_con = filterOptions_s()
+            const QString& directoryPath_par_con
+            , const filterOptions_s& filterOptions_par_con = filterOptions_s()
     );
 
     std::vector<QString> filter_f();
