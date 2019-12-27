@@ -242,6 +242,7 @@ std::vector<QString> directoryFilter_c::filter_f()
         }
         else
         {
+            //no need to add anything to the errors, the "valid functions" do that
             break;
         }
         stateQueue_pri.emplace_back(state_ec::running);
