@@ -72,6 +72,7 @@ private:
 public:
     directoryFilter_c() = delete;
     directoryFilter_c(
+            QObject* parent_par,
             const QString& directoryPath_par_con
             , const filterOptions_s& filterOptions_par_con = filterOptions_s()
     );

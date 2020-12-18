@@ -223,10 +223,11 @@ bool directoryFilter_c::filenameFullExtensionMatch_f(const QString& filename_par
 }
 
 directoryFilter_c::directoryFilter_c(
-        const QString& directoryPath_par_con
+        QObject* parent_par
+        , const QString& directoryPath_par_con
         , const filterOptions_s& filterOptions_par_con)
-    :
-      directoryPath_pri(QDir::fromNativeSeparators(directoryPath_par_con))
+    : QObject(parent_par)
+    , directoryPath_pri(QDir::fromNativeSeparators(directoryPath_par_con))
     , filterOptions_pri(filterOptions_par_con)
 {}
 
