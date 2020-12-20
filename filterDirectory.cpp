@@ -257,7 +257,7 @@ std::vector<QString> directoryFilter_c::filter_f()
         }
         else
         {
-            basePathTmp = directoryPath_pri;
+            basePathTmp = "./";
         }
         //get ready for it... .absolutePath() removes the last "/"... sigh
         if (basePathTmp.endsWith("/"))
@@ -352,33 +352,28 @@ std::vector<QString> directoryFilter_c::filter_f()
                 //for every subfolder gathered
                 for (const auto& subfolder_ite_con : subfolders)
                 {
-                    //qDebug() << "folder_ite_con " << subfolder_ite_con << endl;
+                    //qDebug() << "folder_ite_con " << subfolder_ite_con << Qt::endl;
 
                     //do a QDir of the subfolder, using the initial folder + all the subfolder "depth" that has been traveled/iterated
                     QDir currentSubfolderDirTmp(sourceDir.absolutePath() + "/" + subfolder_ite_con);
-                    if (filterOptions_pri.listDirectories_pub)
-                    {
-                        resultTmp.emplace_back(currentSubfolderDirTmp.path());
-                    }
+
 
                     //get the subfolders of the one it's iterating
                     QStringList subFoldersTmp(currentSubfolderDirTmp.entryList(QDir::Dirs | (filterOptions_pri.listHidden_pub ? QDir::Hidden : QDir::Dirs) | QDir::NoDotAndDotDot | QDir::NoSymLinks));
+                    if (filterOptions_pri.listDirectories_pub)
+                    {
+                        if (filterOptions_pri.listEmptyDirectories_pub and currentSubfolderDirTmp.isEmpty())
+                        {
+                        }
+                        else
+                        {
+                            resultTmp.emplace_back(currentSubfolderDirTmp.path());
+                        }
+                    }
                     //for the found subfolder, prepend the previous subfolder path string
                     for (auto& subfolderTmp_ite : subFoldersTmp)
                     {
                         //qDebug() << "subfolder_ite_con + "/" + subfolderTmp_ite " << subfolder_ite_con + "/" + subfolderTmp_ite << endl;
-                        if (filterOptions_pri.listEmptyDirectories_pub)
-                        {
-                            //good
-                        }
-                        else
-                        {
-                            QDir subfolderDirTmp(subfolderTmp_ite);
-                            if (subfolderDirTmp.isEmpty())
-                            {
-                                continue;
-                            }
-                        }
                         //prepend the parent subfolder
                         subfolderTmp_ite.prepend(subfolder_ite_con + "/");
                     }
@@ -419,7 +414,7 @@ std::vector<QString> directoryFilter_c::filter_f()
                             }
                             if (extensionMatchedTmp and regexFullfiledTmp)
                             {
-                                //qDebug() << "source_par_con.absoluteFilePath() + "/" + subfolder_ite_con + "/" + filename_ite_con " << source_par_con.absoluteFilePath() + "/" + subfolder_ite_con + "/" + filename_ite_con << endl;
+                                //qDebug() << "source_par_con.absoluteFilePath() + \"/\" + subfolder_ite_con + \"/\" + filename_ite_con " << basePathTmp + subfolder_ite_con + "/" + filename_ite_con << Qt::endl;
                                 resultTmp.emplace_back(basePathTmp + subfolder_ite_con + "/" + filename_ite_con);
                             }
                             if (pleaseStop_pri)
