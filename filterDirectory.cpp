@@ -1,10 +1,13 @@
 #include "filterDirectory.hpp"
 
 #include "comuso/practicalTemplates.hpp"
+#include "threadedFunctionQtso/threadedFunctionQt.hpp"
 
 #include <QDir>
 #include <QFileInfo>
 #include <QRegularExpression>
+#include <QMutex>
+#include <QMutexLocker>
 
 void directoryFilter_c::setDirectoryPath_pri_con(const QString& directoryPath_par_con)
 {
@@ -68,11 +71,6 @@ bool directoryFilter_c::isValidDirectoryPath_f()
         }
         resultTmp = true;
         break;
-    }
-    if (anyError_f())
-    {
-        stateQueue_pri.emplace_back(state_ec::error);
-        Q_EMIT error_signal();
     }
     return resultTmp;
 }
@@ -171,11 +169,6 @@ bool directoryFilter_c::isValidFilterOptions_f()
         resultTmp =true;
         break;
     }
-    if (anyError_f())
-    {
-        stateQueue_pri.emplace_back(state_ec::error);
-        Q_EMIT error_signal();
-    }
     return resultTmp;
 }
 
@@ -236,17 +229,35 @@ std::vector<QString> directoryFilter_c::filter_f()
     std::vector<QString> resultTmp;
     while (true)
     {
-        stateQueue_pri = { state_ec::initial };
         if (isValidDirectoryPath_f() and isValidFilterOptions_f())
         {
             //good
         }
         else
         {
+            if (stateMutex_pri not_eq nullptr)
+            {
+                QMutexLocker tmp(stateMutex_pri);
+                stateQueue_pri.emplace_back(state_ec::error);
+            }
+            else
+            {
+                stateQueue_pri.emplace_back(state_ec::error);
+            }
+            Q_EMIT error_signal();
             //no need to add anything to the errors, the "valid functions" do that
             break;
         }
-        stateQueue_pri.emplace_back(state_ec::running);
+
+        if (stateMutex_pri not_eq nullptr)
+        {
+            QMutexLocker tmp(stateMutex_pri);
+            stateQueue_pri.emplace_back(state_ec::running);
+        }
+        else
+        {
+            stateQueue_pri.emplace_back(state_ec::running);
+        }
         Q_EMIT running_signal();
         QDir sourceDir(directoryPath_pri);
 
@@ -254,19 +265,21 @@ std::vector<QString> directoryFilter_c::filter_f()
         if (filterOptions_pri.useAbsolutePaths_pub)
         {
             basePathTmp = sourceDir.absolutePath();
+            //get ready for it... .absolutePath() removes the last "/"... sigh
+            //I'll leave the if, just to fix it this behavior ever changes
+            //it's only iterated once anyway
+            if (basePathTmp.endsWith("/"))
+            {
+                //good
+            }
+            else
+            {
+                basePathTmp.append("/");
+            }
         }
         else
         {
-            basePathTmp = "./";
-        }
-        //get ready for it... .absolutePath() removes the last "/"... sigh
-        if (basePathTmp.endsWith("/"))
-        {
-            //good
-        }
-        else
-        {
-            basePathTmp.append("/");
+            basePathTmp = "";
         }
 
         QDir::Filters navigateFiltersTmp(QDir::NoDotAndDotDot);
@@ -437,27 +450,81 @@ std::vector<QString> directoryFilter_c::filter_f()
         if (pleaseStop_pri)
         {
             pleaseStop_pri = false;
-            stateQueue_pri.emplace_back(state_ec::stopped);
+            if (stateMutex_pri not_eq nullptr)
+            {
+                QMutexLocker tmp(stateMutex_pri);
+                stateQueue_pri.emplace_back(state_ec::stopped);
+            }
+            else
+            {
+                stateQueue_pri.emplace_back(state_ec::stopped);
+            }
             Q_EMIT stopped_signal();
-        }
-        else
-        {
-            stateQueue_pri.emplace_back(state_ec::finished);
-            Q_EMIT finished_signal();
         }
         break;
     }
+    if (stateMutex_pri not_eq nullptr)
+    {
+        QMutexLocker tmp(stateMutex_pri);
+        stateQueue_pri.emplace_back(state_ec::finished);
+    }
+    else
+    {
+        stateQueue_pri.emplace_back(state_ec::finished);
+    }
+    Q_EMIT finished_signal();
     return resultTmp;
+}
+
+void directoryFilter_c::filterThreaded_f()
+{
+    if (stateMutex_pri not_eq nullptr)
+    {
+        return;
+    }
+    qRegisterMetaType<std::vector<QString>>("std::vector<QString>");
+    stateMutex_pri = new QMutex;
+    QObject *context(new QObject(this));
+    threadedFunction_c* threadedFunction_ptr = new threadedFunction_c([thisCaptureCornerCaseFix = this]()
+    {
+        Q_EMIT thisCaptureCornerCaseFix->filterThreadedResultsReady_signal(thisCaptureCornerCaseFix->filter_f());
+        Q_EMIT thisCaptureCornerCaseFix->finishedThreaded_signal();
+    }, true);
+    QObject::connect(threadedFunction_ptr, &threadedFunction_c::finished, threadedFunction_ptr, &threadedFunction_c::deleteLater);
+    QObject::connect(this, &directoryFilter_c::finishedThreaded_signal, context, [thisCaptureCornerCaseFix = this, context]
+    {
+        delete thisCaptureCornerCaseFix->stateMutex_pri;
+        thisCaptureCornerCaseFix->stateMutex_pri = nullptr;
+        context->deleteLater();
+    });
+    QObject::connect(this, &directoryFilter_c::finishedThreaded_signal, threadedFunction_ptr, &threadedFunction_c::quit);
+    threadedFunction_ptr->start();
 }
 
 std::vector<directoryFilter_c::state_ec> directoryFilter_c::stateQueue_f() const
 {
-    return stateQueue_pri;
+    if (stateMutex_pri not_eq nullptr)
+    {
+        QMutexLocker tmp(stateMutex_pri);
+        return stateQueue_pri;
+    }
+    else
+    {
+        return stateQueue_pri;
+    }
 }
 
 directoryFilter_c::state_ec directoryFilter_c::currentState_f() const
 {
-    return stateQueue_pri.back();
+    if (stateMutex_pri not_eq nullptr)
+    {
+        QMutexLocker tmp(stateMutex_pri);
+        return stateQueue_pri.back();
+    }
+    else
+    {
+        return stateQueue_pri.back();
+    }
 }
 
 QString directoryFilter_c::filteredDirectory_f() const
